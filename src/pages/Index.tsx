@@ -122,7 +122,7 @@ const Index = () => {
         <Button
           variant="ghost"
           size="icon"
-          data-tooltip="Swap to manual gameplay. Right-click or press F to place a flag. Left-click to select a spot."
+          data-tooltip="Swap to manual gameplay. Right-click to place a flag, Left-click to select a spot."
           className="hover-scale relative"
           onMouseEnter={e => {
             const btn = e.currentTarget;
