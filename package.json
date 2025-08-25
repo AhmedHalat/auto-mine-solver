@@ -16,7 +16,7 @@
     "build:dev": "vite build --mode development",
     "lint": "eslint .",
     "preview": "vite preview",
-    "predeploy": "npm run build",
+    "predeploy": "npm run build && sed -i '' 's=\"\/assets/=\"assets\/=g' dist/index.html",
     "deploy": "gh-pages -d dist",
     "postdeploy": "echo 'Deployment complete!'"
   },

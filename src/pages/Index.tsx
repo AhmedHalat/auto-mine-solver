@@ -9,17 +9,14 @@ import { MinesweeperBoard } from '@/components/MinesweeperBoard';
 const Index = () => {
   // Calculate grid size based on viewport
   const { rows, cols } = useMemo(() => {
-    const cellSize = 40; // pixels per cell
+    const cellSize = window.innerWidth < 640 ? 28 : 40; // smaller cells on mobile
+    const minRows = window.innerWidth < 640 ? 12 : 20;
+    const minCols = window.innerWidth < 640 ? 10 : 30;
     const viewportRows = Math.floor(window.innerHeight / cellSize);
     const viewportCols = Math.floor(window.innerWidth / cellSize);
-    const mineRatio = 0.15; // 15% mines
-    const totalCells = viewportRows * viewportCols;
-    const mineCount = Math.floor(totalCells * mineRatio);
-
     return {
-      rows: Math.max(20, viewportRows),
-      cols: Math.max(30, viewportCols),
-      mineCount: Math.max(40, mineCount)
+      rows: Math.max(minRows, viewportRows),
+      cols: Math.max(minCols, viewportCols),
     };
   }, []);
 
