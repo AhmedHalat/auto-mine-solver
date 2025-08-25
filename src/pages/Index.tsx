@@ -1,20 +1,21 @@
-import React, { useEffect, useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useMinesweeper } from '../hooks/useMinesweeper';
 import { useAutoSolver } from '../hooks/useAutoSolver';
-import { MinesweeperBoard } from '../components/MinesweeperBoard';
 import { ThemeToggle } from '../components/ThemeToggle';
-import { Github, Linkedin, MapPin, Briefcase, GraduationCap } from 'lucide-react';
+import { Github, Linkedin, MapPin, Briefcase, GraduationCap, Gamepad2, RefreshCw  } from 'lucide-react';
+import { Button } from '../components/ui/button';
+import { MinesweeperBoard } from '@/components/MinesweeperBoard';
 
 const Index = () => {
   // Calculate grid size based on viewport
   const { rows, cols } = useMemo(() => {
-    const cellSize = 20; // pixels per cell
+    const cellSize = 40; // pixels per cell
     const viewportRows = Math.floor(window.innerHeight / cellSize);
     const viewportCols = Math.floor(window.innerWidth / cellSize);
     const mineRatio = 0.15; // 15% mines
     const totalCells = viewportRows * viewportCols;
     const mineCount = Math.floor(totalCells * mineRatio);
-    
+
     return {
       rows: Math.max(20, viewportRows),
       cols: Math.max(30, viewportCols),
@@ -23,12 +24,12 @@ const Index = () => {
   }, []);
 
   const { gameState, revealCell, flagCell, resetGame } = useMinesweeper(rows, cols, Math.floor(rows * cols * 0.15));
-  
   const {
     isActive: isAutoSolving,
     currentMove,
     startSolver,
-    makeMove
+    makeMove,
+    stopSolver,
   } = useAutoSolver(
     gameState.board,
     gameState.gameStatus,
@@ -38,38 +39,158 @@ const Index = () => {
     cols
   );
 
+  const [manual, setmanual] = useState(false);
+
+  const getCellContent = (cell) => {
+    if (cell.state === 'flagged') {
+      return '🚩';
+    }
+
+    if (cell.state === 'hidden') {
+      return '';
+    }
+
+    if (cell.isMine) {
+      return '💣';
+    }
+
+    if (cell.neighborMines > 0) {
+      return cell.neighborMines.toString();
+    }
+
+    return '';
+  };
+
+  const getCellColorClass = (cell) => {
+    if (cell.state === 'revealed' && !cell.isMine && cell.neighborMines > 0) {
+      const colorMap = {
+        1: 'text-game-number-1',
+        2: 'text-game-number-2',
+        3: 'text-game-number-3',
+        4: 'text-game-number-4',
+        5: 'text-game-number-5',
+        6: 'text-game-number-6',
+      };
+      return colorMap[cell.neighborMines as keyof typeof colorMap] || 'text-foreground';
+    }
+    return 'text-foreground';
+  };
+
+  const getBackgroundClass = (cell) => {
+    if (cell.state === 'hidden') {
+      return 'bg-game-cell-hidden hover:bg-game-cell-hidden/80';
+    }
+
+    if (cell.state === 'flagged') {
+      return 'bg-game-cell-flag hover:bg-game-cell-flag/80';
+    }
+
+    if (cell.isMine) {
+      return 'bg-game-cell-mine';
+    }
+
+    return 'bg-game-cell-revealed';
+  };
+
   // Auto-start the solver and auto-restart on game end
   useEffect(() => {
-    if (!isAutoSolving && gameState.gameStatus === 'playing') {
-      const timer = setTimeout(() => {
-        startSolver();
-      }, 1000);
-      return () => clearTimeout(timer);
-    }
-  }, [gameState.gameStatus, isAutoSolving, startSolver]);
+    startSolver()
+  }, [startSolver]);
 
   // Auto-restart when game ends
   useEffect(() => {
     if (gameState.gameStatus === 'won' || gameState.gameStatus === 'lost') {
       const timer = setTimeout(() => {
-        resetGame();
+
+        if (!manual) {
+          resetGame();
+          startSolver();
+        }
       }, 3000);
       return () => clearTimeout(timer);
     }
   }, [gameState.gameStatus, resetGame]);
+
+  const restartGame = () => {
+    resetGame({ gameStatus: manual ? 'paused' : 'playing' });
+    if (!manual) startSolver();
+    else stopSolver();
+  }
 
   return (
     <div className="min-h-screen bg-background relative overflow-hidden">
       {/* Theme Toggle */}
       <div className="fixed top-6 right-6 z-50">
         <ThemeToggle />
+        <Button
+          variant="ghost"
+          size="icon"
+          data-tooltip="Swap to manual gameplay. Right-click or press F to place a flag. Left-click to select a spot."
+          className="hover-scale relative"
+          onMouseEnter={e => {
+            const btn = e.currentTarget;
+            let tooltip = document.createElement('div');
+            tooltip.innerText = btn.getAttribute('data-tooltip') || '';
+            tooltip.className = 'absolute right-0 top-full mt-2 mr-0 px-5 py-2 min-w-[260px] rounded bg-card text-xs text-card-foreground shadow-lg z-50 pointer-events-none transition-opacity duration-200 opacity-0 group-hover:opacity-100';
+            tooltip.style.opacity = '1';
+            tooltip.style.whiteSpace = 'pre-line';
+            tooltip.id = 'manual-tooltip';
+            btn.appendChild(tooltip);
+          }}
+          onMouseLeave={e => {
+            const btn = e.currentTarget;
+            const tooltip = btn.querySelector('#manual-tooltip');
+            if (tooltip) btn.removeChild(tooltip);
+          }}
+          onClick={() => {
+            const newValue = !manual;
+            if (newValue) {
+              console.log("stopping");
+              stopSolver();
+              gameState.gameStatus = 'paused';
+            } else {
+              resetGame();
+            }
+            setmanual(newValue)
+          }}
+        >
+          <Gamepad2 className="h-5 w-5 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
+          <Gamepad2 className="absolute h-5 w-5 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+          <span className="sr-only">Manual game toggle</span>
+        </Button>
+        <Button
+          variant="ghost"
+          className="ml-2"
+          onClick={restartGame}
+        >
+          <RefreshCw className="h-5 w-5" />
+          <span className="sr-only">Restart game</span>
+        </Button>
       </div>
 
+      {manual && gameState.gameStatus === 'won' && (
+        <div className="fixed inset-0 bg-green-500/80 flex items-center justify-center z-[100]">
+          <div className="text-center text-white">
+            <h1 className="text-4xl font-bold">🎉 You Won!</h1>
+            <Button onClick={restartGame} className="mt-4">Play Again</Button>
+          </div>
+        </div>
+      )}
+
+      {manual && gameState.gameStatus === 'lost' && (
+        <div className="fixed inset-0 bg-red-500/80 flex items-center justify-center z-[100]">
+          <div className="text-center text-white">
+            <h1 className="text-4xl font-bold">💥 Game Over</h1>
+            <Button onClick={restartGame} className="mt-4">Try Again</Button>
+          </div>
+        </div>
+      )}
+
       {/* Full Screen Minesweeper Background */}
-      <div className="fixed inset-0 opacity-20">
-        <div 
+      <div className={`fixed inset-0 ${!manual ? 'opacity-20' : ''}`}>
+        <div
           className="w-full h-full grid bg-border/10"
-          style={{ 
+          style={{
             gridTemplateColumns: `repeat(${cols}, 1fr)`,
             gridTemplateRows: `repeat(${rows}, 1fr)`
           }}
@@ -78,30 +199,25 @@ const Index = () => {
             row.map((cell, colIndex) => (
               <div
                 key={`${rowIndex}-${colIndex}`}
+                style={{ userSelect: 'none' }}
+                onClick={() => {
+                  if (manual && cell.state === 'hidden') {
+                    revealCell(rowIndex, colIndex);
+                  }
+                }}
+                onContextMenu={e => {
+                  e.preventDefault();
+                  if (manual && cell.state === 'hidden') {
+                    flagCell(rowIndex, colIndex);
+                  }
+                }}
                 className={`
                   border border-border/20 flex items-center justify-center text-xs font-bold
-                  ${cell.state === 'hidden' ? 'bg-muted/40' : 
-                    cell.state === 'flagged' ? 'bg-game-cell-flag/40' :
-                    cell.isMine ? 'bg-game-cell-mine/40' : 'bg-game-cell-revealed/40'}
-                  ${currentMove?.row === rowIndex && currentMove?.col === colIndex ? 'animate-glow' : ''}
+                  ${getBackgroundClass(cell)}
+                  ${getCellColorClass(cell)}
                 `}
               >
-                {cell.state === 'revealed' && !cell.isMine && cell.neighborMines > 0 && (
-                  <span 
-                    className={`
-                      ${cell.neighborMines === 1 ? 'text-game-number-1' :
-                        cell.neighborMines === 2 ? 'text-game-number-2' :
-                        cell.neighborMines === 3 ? 'text-game-number-3' :
-                        cell.neighborMines === 4 ? 'text-game-number-4' :
-                        cell.neighborMines === 5 ? 'text-game-number-5' :
-                        'text-game-number-6'}
-                    `}
-                  >
-                    {cell.neighborMines}
-                  </span>
-                )}
-                {cell.state === 'flagged' && '🚩'}
-                {cell.state === 'revealed' && cell.isMine && '💣'}
+                {getCellContent(cell)}
               </div>
             ))
           )}
@@ -109,6 +225,7 @@ const Index = () => {
       </div>
 
       {/* Main Content */}
+      {!manual && (
       <div className="relative z-10 container mx-auto px-6 py-12 min-h-screen flex flex-col justify-center">
         <div className="max-w-4xl mx-auto text-center animate-fade-in">
           {/* Header */}
@@ -120,7 +237,7 @@ const Index = () => {
               Full Stack Developer crafting digital experiences
             </p>
             <p className="text-sm text-muted-foreground/70 italic">
-              Powered by an AI solving minesweeper in the background
+              Enjoy a game of Minesweeper while you explore my portfolio!
             </p>
           </div>
 
@@ -171,6 +288,7 @@ const Index = () => {
           </div>
         </div>
       </div>
+      )}
     </div>
   );
 };

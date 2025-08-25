@@ -16,32 +16,32 @@ export const useMinesweeper = (rows: number = 16, cols: number = 30, mineCount: 
   const placeMines = useCallback((board: Cell[][], totalMines: number): Cell[][] => {
     const newBoard = board.map(row => row.map(cell => ({ ...cell })));
     const positions: Array<{row: number, col: number}> = [];
-    
+
     // Get all positions
     for (let r = 0; r < rows; r++) {
       for (let c = 0; c < cols; c++) {
         positions.push({ row: r, col: c });
       }
     }
-    
+
     // Shuffle and place mines
     for (let i = positions.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
       [positions[i], positions[j]] = [positions[j], positions[i]];
     }
-    
+
     // Place mines in first totalMines positions
     for (let i = 0; i < totalMines && i < positions.length; i++) {
       const { row, col } = positions[i];
       newBoard[row][col].isMine = true;
     }
-    
+
     return newBoard;
   }, [rows, cols]);
 
   const calculateNeighbors = useCallback((board: Cell[][]): Cell[][] => {
     const newBoard = board.map(row => row.map(cell => ({ ...cell })));
-    
+
     for (let r = 0; r < rows; r++) {
       for (let c = 0; c < cols; c++) {
         if (!newBoard[r][c].isMine) {
@@ -59,15 +59,15 @@ export const useMinesweeper = (rows: number = 16, cols: number = 30, mineCount: 
         }
       }
     }
-    
+
     return newBoard;
   }, [rows, cols]);
 
-  const initializeGame = useCallback((): GameState => {
+  const initializeGame = useCallback((state={}): GameState => {
     let board = createEmptyBoard();
     board = placeMines(board, mineCount);
     board = calculateNeighbors(board);
-    
+
     return {
       board,
       gameStatus: 'playing',
@@ -75,34 +75,33 @@ export const useMinesweeper = (rows: number = 16, cols: number = 30, mineCount: 
       flagCount: 0,
       cellsRevealed: 0,
       startTime: Date.now(),
-      endTime: null
+      endTime: null,
+      ...state
     };
   }, [createEmptyBoard, placeMines, calculateNeighbors, mineCount]);
 
   const [gameState, setGameState] = useState<GameState>(initializeGame);
 
   const revealCell = useCallback((row: number, col: number): boolean => {
-    if (gameState.gameStatus !== 'playing') return false;
-    
     const cell = gameState.board[row][col];
     if (cell.state !== 'hidden') return false;
-    
-    const newBoard = gameState.board.map(boardRow => 
+
+    const newBoard = gameState.board.map(boardRow =>
       boardRow.map(boardCell => ({ ...boardCell }))
     );
-    
+
     const toReveal: Array<{row: number, col: number}> = [{ row, col }];
     let cellsRevealed = 0;
-    
+
     while (toReveal.length > 0) {
       const { row: r, col: c } = toReveal.pop()!;
-      
+
       if (r < 0 || r >= rows || c < 0 || c >= cols) continue;
       if (newBoard[r][c].state !== 'hidden') continue;
-      
+
       newBoard[r][c].state = 'revealed';
       cellsRevealed++;
-      
+
       // If it's a mine, game over
       if (newBoard[r][c].isMine) {
         setGameState(prev => ({
@@ -113,7 +112,7 @@ export const useMinesweeper = (rows: number = 16, cols: number = 30, mineCount: 
         }));
         return false;
       }
-      
+
       // If it has no neighboring mines, reveal neighbors
       if (newBoard[r][c].neighborMines === 0) {
         for (let dr = -1; dr <= 1; dr++) {
@@ -123,48 +122,46 @@ export const useMinesweeper = (rows: number = 16, cols: number = 30, mineCount: 
         }
       }
     }
-    
+
     const totalCellsRevealed = gameState.cellsRevealed + cellsRevealed;
     const totalCells = rows * cols;
     const isWon = totalCellsRevealed === totalCells - mineCount;
-    
+
     setGameState(prev => ({
       ...prev,
       board: newBoard,
       cellsRevealed: totalCellsRevealed,
-      gameStatus: isWon ? 'won' : 'playing',
+      gameStatus: isWon ? 'won' : gameState.gameStatus,
       endTime: isWon ? Date.now() : null
     }));
-    
+
     return true;
   }, [gameState, rows, cols, mineCount]);
 
   const flagCell = useCallback((row: number, col: number): boolean => {
-    if (gameState.gameStatus !== 'playing') return false;
-    
     const cell = gameState.board[row][col];
     if (cell.state === 'revealed') return false;
-    
-    const newBoard = gameState.board.map(boardRow => 
+
+    const newBoard = gameState.board.map(boardRow =>
       boardRow.map(boardCell => ({ ...boardCell }))
     );
-    
+
     const newState = cell.state === 'flagged' ? 'hidden' : 'flagged';
     newBoard[row][col].state = newState;
-    
+
     const flagDelta = newState === 'flagged' ? 1 : -1;
-    
+
     setGameState(prev => ({
       ...prev,
       board: newBoard,
       flagCount: prev.flagCount + flagDelta
     }));
-    
+
     return true;
   }, [gameState]);
 
-  const resetGame = useCallback(() => {
-    setGameState(initializeGame());
+  const resetGame = useCallback((state={}) => {
+    setGameState(initializeGame(state));
   }, [initializeGame]);
 
   const pauseGame = useCallback(() => {

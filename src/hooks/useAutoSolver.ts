@@ -56,14 +56,14 @@ export const useAutoSolver = (
 
   const findLogicalMove = useCallback((): SolverMove | null => {
     const revealedCells = getRevealedCells();
-    
+
     for (const { row, col } of revealedCells) {
       const cell = board[row][col];
       const neighbors = getNeighbors(row, col);
-      
+
       const hiddenNeighbors = neighbors.filter(n => board[n.row][n.col].state === 'hidden');
       const flaggedNeighbors = neighbors.filter(n => board[n.row][n.col].state === 'flagged');
-      
+
       // If we've flagged enough mines, reveal remaining hidden neighbors
       if (flaggedNeighbors.length === cell.neighborMines && hiddenNeighbors.length > 0) {
         const target = hiddenNeighbors[0];
@@ -75,7 +75,7 @@ export const useAutoSolver = (
           reasoning: `All mines around ${row},${col} are flagged`
         };
       }
-      
+
       // If hidden neighbors equal remaining mines, flag them all
       if (hiddenNeighbors.length === cell.neighborMines - flaggedNeighbors.length && hiddenNeighbors.length > 0) {
         const target = hiddenNeighbors[0];
@@ -88,7 +88,7 @@ export const useAutoSolver = (
         };
       }
     }
-    
+
     return null;
   }, [board, getRevealedCells, getNeighbors]);
 
@@ -96,15 +96,15 @@ export const useAutoSolver = (
     // Find a hidden cell with the lowest risk
     let bestMove: SolverMove | null = null;
     let lowestRisk = Infinity;
-    
+
     for (let r = 0; r < rows; r++) {
       for (let c = 0; c < cols; c++) {
         if (board[r][c].state === 'hidden') {
           const neighbors = getNeighbors(r, c);
-          const revealedNeighbors = neighbors.filter(n => 
+          const revealedNeighbors = neighbors.filter(n =>
             board[n.row][n.col].state === 'revealed' && board[n.row][n.col].neighborMines > 0
           );
-          
+
           if (revealedNeighbors.length === 0) {
             // Corner or edge cells are usually safer
             const risk = Math.random() * 50; // Random but lower risk
@@ -123,20 +123,20 @@ export const useAutoSolver = (
             let totalMines = 0;
             let totalFlags = 0;
             let totalHidden = 0;
-            
+
             for (const neighbor of revealedNeighbors) {
               const neighborCell = board[neighbor.row][neighbor.col];
               const neighborNeighbors = getNeighbors(neighbor.row, neighbor.col);
               const flaggedCount = neighborNeighbors.filter(n => board[n.row][n.col].state === 'flagged').length;
               const hiddenCount = neighborNeighbors.filter(n => board[n.row][n.col].state === 'hidden').length;
-              
+
               totalMines += neighborCell.neighborMines;
               totalFlags += flaggedCount;
               totalHidden += hiddenCount;
             }
-            
+
             const risk = totalHidden > 0 ? ((totalMines - totalFlags) / totalHidden) * 100 : 50;
-            
+
             if (risk < lowestRisk) {
               lowestRisk = risk;
               bestMove = {
@@ -151,56 +151,56 @@ export const useAutoSolver = (
         }
       }
     }
-    
+
     return bestMove;
   }, [board, rows, cols, getNeighbors]);
 
   const makeMove = useCallback((): boolean => {
     if (gameStatus !== 'playing') return false;
-    
+
     // First, try logical moves
     let move = findLogicalMove();
     let wasGuess = false;
-    
+
     // If no logical move, make a guess
     if (!move) {
       move = findGuessMove();
       wasGuess = true;
     }
-    
+
     if (!move) return false;
-    
+
     setCurrentMove(move);
-    
+
     let success = false;
     if (move.action === 'reveal') {
       success = revealCell(move.row, move.col);
     } else {
       success = flagCell(move.row, move.col);
     }
-    
+
     if (success) {
       setStats(prev => ({
         totalMoves: prev.totalMoves + 1,
         logicalMoves: prev.logicalMoves + (wasGuess ? 0 : 1),
         guesses: prev.guesses + (wasGuess ? 1 : 0),
-        efficiency: prev.totalMoves > 0 
+        efficiency: prev.totalMoves > 0
           ? Math.round((prev.logicalMoves + (wasGuess ? 0 : 1)) / (prev.totalMoves + 1) * 100)
           : 100
       }));
     }
-    
+
     // Clear current move after a short delay
     setTimeout(() => setCurrentMove(null), 1000);
-    
+
     return success;
   }, [gameStatus, findLogicalMove, findGuessMove, revealCell, flagCell]);
 
   const startSolver = useCallback(() => {
+    console.log("Starting solver", gameStatus);
     if (gameStatus !== 'playing') return;
-    
     setIsActive(true);
-    
+
     // If no cells are revealed yet, start with a corner
     const hasRevealedCells = board.some(row => row.some(cell => cell.state === 'revealed'));
     if (!hasRevealedCells) {
@@ -216,6 +216,7 @@ export const useAutoSolver = (
 
   const stopSolver = useCallback(() => {
     setIsActive(false);
+    gameStatus = 'paused';
     if (intervalRef.current) {
       clearInterval(intervalRef.current);
       intervalRef.current = null;
@@ -247,7 +248,7 @@ export const useAutoSolver = (
         intervalRef.current = null;
       }
     }
-    
+
     return () => {
       if (intervalRef.current) {
         clearInterval(intervalRef.current);

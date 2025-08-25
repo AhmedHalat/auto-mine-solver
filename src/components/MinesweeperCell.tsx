@@ -8,8 +8,8 @@ interface MinesweeperCellProps {
   moveConfidence?: number;
 }
 
-export const MinesweeperCell: React.FC<MinesweeperCellProps> = ({ 
-  cell, 
+export const MinesweeperCell: React.FC<MinesweeperCellProps> = ({
+  cell,
   isCurrentMove = false,
   moveConfidence = 0
 }) => {
@@ -17,19 +17,19 @@ export const MinesweeperCell: React.FC<MinesweeperCellProps> = ({
     if (cell.state === 'flagged') {
       return '🚩';
     }
-    
+
     if (cell.state === 'hidden') {
       return '';
     }
-    
+
     if (cell.isMine) {
       return '💣';
     }
-    
+
     if (cell.neighborMines > 0) {
       return cell.neighborMines.toString();
     }
-    
+
     return '';
   };
 
@@ -52,18 +52,17 @@ export const MinesweeperCell: React.FC<MinesweeperCellProps> = ({
     if (cell.state === 'hidden') {
       return 'bg-game-cell-hidden hover:bg-game-cell-hidden/80';
     }
-    
+
     if (cell.state === 'flagged') {
       return 'bg-game-cell-flag hover:bg-game-cell-flag/80';
     }
-    
+
     if (cell.isMine) {
       return 'bg-game-cell-mine';
     }
-    
+
     return 'bg-game-cell-revealed';
   };
-
   return (
     <div
       className={cn(
@@ -72,13 +71,31 @@ export const MinesweeperCell: React.FC<MinesweeperCellProps> = ({
         getCellColorClass(),
         cell.state === 'revealed' && 'animate-cell-reveal',
         isCurrentMove && 'animate-glow ring-2 ring-primary/50',
-        'hover:scale-105 cursor-default select-none'
+        'hover:scale-105 cursor-default select-none',
+        // 3D effect
+        cell.state === 'hidden'
+          ? 'shadow-[inset_2px_2px_6px_rgba(0,0,0,0.25),2px_2px_8px_rgba(0,0,0,0.10)]'
+          : 'shadow-[2px_2px_8px_rgba(0,0,0,0.10),inset_1px_1px_4px_rgba(255,255,255,0.15)]'
       )}
+      style={{
+        borderRadius: '0.25rem',
+        ...(cell.state === 'hidden' && {
+          boxShadow:
+            'inset 2px 2px 6px rgba(0,0,0,0.25), 2px 2px 8px rgba(0,0,0,0.10)',
+        }),
+        ...(cell.state !== 'hidden' && {
+          boxShadow:
+            '2px 2px 8px rgba(0,0,0,0.10), inset 1px 1px 4px rgba(255,255,255,0.15)',
+        }),
+        userSelect: 'none',
+      }}
     >
-      {getCellContent()}
-      
+      <span style={{ userSelect: 'none' }}>
+        {getCellContent()}
+      </span>
+
       {isCurrentMove && moveConfidence > 0 && (
-        <div className="absolute -top-6 left-1/2 transform -translate-x-1/2 bg-primary text-primary-foreground text-xs px-1 py-0.5 rounded text-center whitespace-nowrap pointer-events-none">
+        <div className="absolute -top-6 left-1/2 transform -translate-x-1/2 bg-primary text-primary-foreground text-xs px-1 py-0.5 rounded text-center whitespace-nowrap pointer-events-none shadow-lg">
           {moveConfidence}%
         </div>
       )}
