@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useMinesweeper } from '../hooks/useMinesweeper';
 import { useAutoSolver } from '../hooks/useAutoSolver';
 import { ThemeToggle } from '../components/ThemeToggle';
-import { Github, Linkedin, MapPin, Briefcase, GraduationCap, Gamepad2, RefreshCw  } from 'lucide-react';
+import { Github, Linkedin, MapPin, Briefcase, GraduationCap, Gamepad2, RefreshCw, Flag, Eye  } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { MinesweeperBoard } from '@/components/MinesweeperBoard';
 
@@ -19,6 +19,8 @@ const Index = () => {
       cols: Math.max(minCols, viewportCols),
     };
   }, []);
+
+  const isMobile = window.innerWidth < 640;
 
   const { gameState, revealCell, flagCell, resetGame } = useMinesweeper(rows, cols, Math.floor(rows * cols * 0.15));
   const {
@@ -37,6 +39,7 @@ const Index = () => {
   );
 
   const [manual, setmanual] = useState(false);
+  const [flagMode, setFlagMode] = useState(false);
 
   const getCellContent = (cell) => {
     if (cell.state === 'flagged') {
@@ -118,6 +121,18 @@ const Index = () => {
     <div className="min-h-screen bg-background relative overflow-hidden">
       {/* Theme Toggle */}
       <div className="fixed top-6 right-6 z-50">
+        {isMobile && manual && (
+          <Button
+            variant={flagMode ? "default" : "ghost"}
+            size="icon"
+            className="ml-2"
+            onClick={() => setFlagMode(f => !f)}
+            data-tooltip={flagMode ? "Tap cells to place flags" : "Tap to enable flag mode"}
+          >
+            {flagMode ? <Flag className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+            <span className="sr-only">Toggle flag mode</span>
+          </Button>
+        )}
         <ThemeToggle />
         <Button
           variant="ghost"
@@ -199,7 +214,11 @@ const Index = () => {
                 style={{ userSelect: 'none' }}
                 onClick={() => {
                   if (manual && cell.state === 'hidden') {
-                    revealCell(rowIndex, colIndex);
+                    if (isMobile && flagMode) {
+                      flagCell(rowIndex, colIndex);
+                    } else {
+                      revealCell(rowIndex, colIndex);
+                    }
                   }
                 }}
                 onContextMenu={e => {
