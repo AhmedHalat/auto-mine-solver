@@ -206,6 +206,8 @@ const Index = () => {
                   e.preventDefault();
                   if (manual && cell.state === 'hidden') {
                     flagCell(rowIndex, colIndex);
+                  } else if (manual && cell.state === 'flagged') {
+                    flagCell(rowIndex, colIndex); // Unflag
                   }
                 }}
                 className={`
